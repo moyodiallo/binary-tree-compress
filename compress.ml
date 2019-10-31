@@ -72,17 +72,16 @@ let rec construct_identity abr =
   permet de recupere l'identite simplement d'un abr
   abr: ABR
 *)
-let identity_abr abr = match abr with
+let id_abr abr = match abr with
   | Nil             -> failwith "l'indentite de Nil"
   | Node((_,i),_,_) -> i
 ;;
 
 (*
+  Convention : la cle 0 n'existe pas, c'est-a-dire lien directe
   La structure pour l'arbre binaire compressee
   None  : les noeuds vide
-  Node0 : les noeuds sans cles (exemp racine dans certaine cas)
-  Node1 : les noeuds avec une cle qui correspond au sous arbre gauche
-  Node2 : les noeuds avec 2 cle qui correspond a chaque sous arbre respectivement
+  Node0 : les noeuds avec 2 cle qui correspond a chaque sous arbre respectivement
 
   Les elements mutables dans la liste qui correspond dans les cas ou on veut ajouter un element
     dans un noeud, ou pointer vers un autre node sans faire une copy complete, en gros cette structure
@@ -91,9 +90,7 @@ let identity_abr abr = match abr with
 *)
 type 'a compress   = 
   None 
-  | Node0 of { mutable e:'a ; mutable g: 'a compress; mutable d: 'a compress }
-  | Node1 of { mutable e:'a ; mutable g: 'a compress; mutable d: 'a compress ; key2: int}
-  | Node2 of { mutable e:'a ; mutable g: 'a compress; mutable d: 'a compress ; key1: int; key2: int}
+  | Node0 of { mutable e:'a ; mutable g: 'a compress; mutable d: 'a compress ; key_g: int; key_d: int}
 ;;
 
 (*
@@ -106,6 +103,9 @@ type 'a value =
   | ValueKey  of 'a*int list
 ;;
 
+let genValue  = ref 1;;
+let genere () = (genValue:= !genValue + 1; !genValue);;
+
 
 (*
   remplie les data de abr-simple dans l'abr compresse
@@ -116,38 +116,37 @@ type 'a value =
 let rec fill abr abr_com add keys = 
   match abr,abr_com with
   | Nil,_                     -> ()
-  | Node((a,i),g,d), Node0(e) -> (e.e <- add a e.e keys ; fill g e.g add keys; fill d e.d add keys)
-  | Node((a,i),g,d), Node1(e) -> (e.e <- add a e.e keys ; fill g e.g add keys; fill d e.d add (keys@[e.key2]))
-  | Node((a,i),g,d), Node2(e) -> (e.e <- add a e.e keys ; fill g e.g add (keys@[e.key1]); fill d e.d add (keys@[e.key2]))
-  | _,_                       -> failwith "pas sense etre attent"
+  | Node((a,i),g,d), Node0(e) -> 
+    ( e.e <- add a e.e keys ; 
+      fill g e.g add (keys@(if e.key_g = 0 then [] else [e.key_g])); 
+      fill d e.d add (keys@(if e.key_g = 0 then [] else [e.key_g]))
+    )
+  | _,_                       -> failwith "doit pas etre attent"
 
 (*
   produit une structure ARB compresse en la remplissant des valeurs
   de l'ABR de depart
-  abr: ABR simple 
-  nbr_node: nombre total d'etiquette(noeud) dans l'ABR
+  abr: ABR simple
   add: pour l'ajout d'une donnee dans un noeud
 *)
-let compress abr nbr_node add = 
-  true
-
-
-
-(*
-  compress fait un parcours gauche-etique-droite, c'est-a-dire infixe
-
-    sous function rec compression
-      index_array -> un tableau qui lie les index et les 
-*)
-let compress abr nbr_node = 
-  let is_in_identity = true (* ?????? *)
+let compress abr add = 
+  let rec is_compressed  compressed node = 
+    match compressed with
+    | []         -> None
+    | (n,id)::tl -> if id = id_abr node then n else is_compressed tl node  
   in
-  let add_to_compressed node e  = None
-  in
-  let rec compress abr index_array identity_list current_identity  = 
+  let rec compress abr add compressed =
     match abr with
-    | Nil                  -> None
-    | Node((e,id),Nil,Nil) -> None
-    | Node((e,id),g,d)     -> None
-    | _                    -> None
+    | Nil                 -> None,0,[]
+    | Node((a,i),Nil,Nil) -> 
+      let m = is_compressed compressed abr in 
+        if m = None then Node0({e = a; g = None; d = None; key_g = 0; key_d = 0}),0,[] else m,0,[]
+    | Node((a,i),g,d)     -> 
+      let m = is_compressed compressed abr in
+      if m <> None then m,genere (),compressed 
+      else 
+        let mG,keyG,compressG = compress g add compressed in
+        let mD,keyD,compressD = compress d add compressG  in
+        Node0({e = a; g = mG; d = mD; key_g = keyD; key_d = keyD}),0,compressD
+  in compress abr add []
 ;;
