@@ -106,12 +106,46 @@ type 'a value =
 let genValue  = ref 1;;
 let genere () = (genValue:= !genValue + 1; !genValue);;
 
+(*
+  construct une structure ARB compressed de l'ABR de depart
+  abr: ABR simple
+  add: pour l'ajout d'une donnee dans un noeud
+  return: une structure compressee sans valeur
+  
+  construct interne retourne un noeud,une cle,une liste des deja construit
+  pour la cle 0 on a un lien directe 
+*)
+let construct abr add = 
+  let rec is_constructed  constructed node = 
+    match constructed with
+    | []         -> None
+    | (n,id)::tl -> if id = id_abr node then n else is_constructed tl node  
+  in
+  let rec construct abr add constructed =
+    match abr with
+    | Nil                 -> None,0,[]
+    | Node((a,i),Nil,Nil) -> 
+      let m = is_constructed constructed abr in 
+        if m = None then Node0({e = a; g = None; d = None; key_g = 0; key_d = 0}),0,[] else m,genere (),[]
+    | Node((a,i),g,d)     -> 
+      let m = is_constructed constructed abr in
+      if m <> None then m,genere (),constructed 
+      else 
+        let mG,keyG,constructG = construct g add constructed in
+        let mD,keyD,constructD = construct d add constructG  in
+        let m = Node0({e = a; g = mG; d = mD; key_g = keyG; key_d = keyD}) in m,0,constructD
+  in 
+  let m,_,_ = construct abr add [] in m
+;;
 
 (*
   remplie les data de abr-simple dans l'abr compresse
   abr: ABR simple contenant les valeurs
   abr_com: ABR compressee(la structure compressee)
   add: pour l'ajout d'une donnee dans un noeud
+  return: void (unit en ocaml)
+
+  Remarque: la cle 0 n'est pas pri en compte puisque c'est un lien direct
 *)
 let rec fill abr abr_com add keys = 
   match abr,abr_com with
@@ -122,31 +156,10 @@ let rec fill abr abr_com add keys =
       fill d e.d add (keys@(if e.key_g = 0 then [] else [e.key_g]))
     )
   | _,_                       -> failwith "doit pas etre attent"
+;;
 
 (*
-  produit une structure ARB compresse en la remplissant des valeurs
-  de l'ABR de depart
-  abr: ABR simple
-  add: pour l'ajout d'une donnee dans un noeud
+  construct et remplie la structure compressee
 *)
-let compress abr add = 
-  let rec is_compressed  compressed node = 
-    match compressed with
-    | []         -> None
-    | (n,id)::tl -> if id = id_abr node then n else is_compressed tl node  
-  in
-  let rec compress abr add compressed =
-    match abr with
-    | Nil                 -> None,0,[]
-    | Node((a,i),Nil,Nil) -> 
-      let m = is_compressed compressed abr in 
-        if m = None then Node0({e = a; g = None; d = None; key_g = 0; key_d = 0}),0,[] else m,0,[]
-    | Node((a,i),g,d)     -> 
-      let m = is_compressed compressed abr in
-      if m <> None then m,genere (),compressed 
-      else 
-        let mG,keyG,compressG = compress g add compressed in
-        let mD,keyD,compressD = compress d add compressG  in
-        Node0({e = a; g = mG; d = mD; key_g = keyD; key_d = keyD}),0,compressD
-  in compress abr add []
+let compress abr add =  let m = construct abr add in fill abr m add [] 
 ;;
