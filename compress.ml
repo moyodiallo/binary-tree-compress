@@ -109,19 +109,18 @@ let genere () = (genValue:= !genValue + 1; !genValue);;
 (*
   construct une structure ARB compressed de l'ABR de depart
   abr: ABR simple
-  add: pour l'ajout d'une donnee dans un noeud
   return: une structure compressee sans valeur
   
   construct interne retourne un noeud,une cle,une liste des deja construit
   pour la cle 0 on a un lien directe 
 *)
-let construct abr add = 
+let construct abr = 
   let rec is_constructed  constructed node = 
     match constructed with
     | []         -> None
     | (n,id)::tl -> if id = id_abr node then n else is_constructed tl node  
   in
-  let rec construct abr add constructed =
+  let rec construct abr constructed =
     match abr with
     | Nil                 -> None,0,[]
     | Node((a,i),Nil,Nil) -> 
@@ -131,11 +130,11 @@ let construct abr add =
       let m = is_constructed constructed abr in
       if m <> None then m,genere (),constructed 
       else 
-        let mG,keyG,constructG = construct g add constructed in
-        let mD,keyD,constructD = construct d add constructG  in
+        let mG,keyG,constructG = construct g constructed in
+        let mD,keyD,constructD = construct d constructG  in
         let m = Node0({e = a; g = mG; d = mD; key_g = keyG; key_d = keyD}) in m,0,constructD
   in 
-  let m,_,_ = construct abr add [] in m
+  let m,_,_ = construct abr [] in m
 ;;
 
 (*
@@ -161,7 +160,12 @@ let rec fill abr abr_com add keys =
 (*
   construct et remplie la structure compressee
 *)
-let compress abr add =  let m = construct abr add in fill abr m add [] 
+let compress abr add =  let m = construct abr in fill abr m add [] 
 ;;
 
-let exist abr_compressed element  = (* A remplir*) true;;
+(*
+  abr_compressed: consistitue la structure compressee contenant les donnees
+  search: la fonction qui consiste a rechercher un element dans les noeud
+  element: l'element a rechercher dans un noeud celon la structure utilisee dans le noeud
+*)
+let exist abr_compressed search element  = (* A remplir*) true;;
