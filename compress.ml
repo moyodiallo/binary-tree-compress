@@ -163,3 +163,5 @@ let rec fill abr abr_com add keys =
 *)
 let compress abr add =  let m = construct abr add in fill abr m add [] 
 ;;
+
+let exist abr_compressed element  = (* A remplir*) true;;
