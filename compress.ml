@@ -13,8 +13,9 @@ type 'a abr = Nil | Node of 'a * 'a abr * 'a abr;;
 let rec add abr elt compare = 
   match abr with
   | Nil          -> Node(elt,Nil,Nil)
-  | Node(e,g,d)  -> if compare elt e < 0 then  Node(e,add g elt compare, d)
-                    else Node(e,g, add d elt compare)
+  | Node(e,g,d)  -> 
+    if compare elt e < 0 then  Node(e,add g elt compare, d)
+    else Node(e,g, add d elt compare)
 ;;
 
 (*
@@ -164,8 +165,28 @@ let compress abr add =  let m = construct abr in fill abr m add []
 ;;
 
 (*
+  la function consiste a recherche un element dans un arbre compressee
   abr_compressed: consistitue la structure compressee contenant les donnees
-  search: la fonction qui consiste a rechercher un element dans les noeud
+  search: la fonction qui consiste a rechercher un element dans un noeud par des ces indexes
+  compare: comparer 2 element qu'un noeud peut contenir
   element: l'element a rechercher dans un noeud celon la structure utilisee dans le noeud
 *)
-let exist abr_compressed search element  = (* A remplir*) true;;
+let exist abr_compressed search compare element = 
+  let rec exist abr search compare keys element =
+    match abr_compressed with
+    | None                                               -> false
+    | Node0({e=e; g=g; d=d; key_g=key_g; key_d=key_d; }) -> 
+      let m = compare (search e keys) element in
+      if m = 0 then true 
+      else if m < 0 then exist g search compare (keys@(if key_g = 0 then [] else [key_g])) element
+      else if m > 0 then exist d search compare (keys@(if key_d = 0 then [] else [key_d])) element
+      else false
+  in exist abr_compressed search compare [] element
+;;
+
+(*
+  la structure d'un noeud d'un ABR compressee doit definir 3 funtion
+  add : element->structure->key_list->structure
+  search : structure->keys->element
+  compare : element->element->int
+*)
